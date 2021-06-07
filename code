@@ -7065,6 +7065,9 @@ p + geom_bar(aes(fill = value),colour = "white",stat = "identity") +
 ggsave("molecular/mutation/mutation-tfunc-ratio1.pdf",width = 8,height = 10)
 
 
+#CNV数据显示及组间CNV差异识别-王娜
+
+
 
 
 
