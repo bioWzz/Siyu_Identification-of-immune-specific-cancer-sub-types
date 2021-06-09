@@ -7067,6 +7067,154 @@ ggsave("molecular/mutation/mutation-tfunc-ratio1.pdf",width = 8,height = 10)
 
 #CNV数据显示及组间CNV差异识别-王娜
 
+cnv <- data.frame()
+for (i in 1:10) {
+cnv1 <- read.table(paste0("/pub6/siyu/cnv/pancancer-",i,".txt"), sep = "\t", row.names= 1, header = T, stringsAsFactors = F)
+cnv <- rbind(cnv,cnv1)
+}
+genelocation <- read.table("/pub6/siyu/ucsc-mRNA-FPKM-UQ/gene_location.txt", sep = "\t", header = T, stringsAsFactors = F)##ENSG
+
+class <- read.table("/pub6/wenjing/train.valid/newresults/kmdist-spearman2/kmdist-spearman.k=4.consensusClass2.csv", sep = ",", header = T, stringsAsFactors = F)
+class$sample <- gsub("-",".",class$sample)
+
+cnv1 <- cnv[,na.omit(match(class$sample[which(class$class==4)],colnames(cnv)))]##1688+1787+1873+2007=7355
+#write.table(cnv1, "/pub6/wenjing/cnv/cnv-subtype4.txt", sep="\t",quote = F )
+
+
+cnv1$amp <- apply(cnv1[,1:2007],1,function(x) length(which(x==2))/length(x))
+cnv1$gain <- apply(cnv1[,1:2007],1,function(x) length(which(x==1))/length(x))
+cnv1$loss <- apply(cnv1[,1:2007],1,function(x) length(which(x==-1))/length(x))
+cnv1$del <- apply(cnv1[,1:2007],1,function(x) length(which(x==-2))/length(x))
+cnv1fre <- cnv1[,2008:2011]
+write.table(cnv1fre, "/pub6/wenjing/cnv/cnv-subtype4-frequency.txt", sep="\t",quote = F )
+
+genelocation <- read.table("/pub6/wenjing/cnv/genelocation (1)", sep = "\t", header = F, stringsAsFactors = F)
+location <- genelocation[,-c(5,6)]
+convert <- read.table("/pub6/wenjing/cnv/mart_export.txt", sep = "\t", header = T, stringsAsFactors = F)
+location$ensg <- convert[match(substr(location$V4,1,15),convert[,3]),1]
+
+#rownames(cnv1) <- unlist(strsplit(rownames(cnv1)[1:10],split = "|",fixed = T))[1]
+#rownames(cnv1) <- apply(rownames(cnv1),1,function(x) unlist(strsplit(x,split = "|",fixed = T))[1])
+
+cnv1$gene <- gsub("\\|.*","",rownames(cnv1))
+cnv1$ensg <- gsub(".*\\|","",rownames(cnv1))
+
+#cnv1$ensg <- location[match(cnv1$gene,location$V7),6]
+cnv1$ensg[-which((nchar(cnv1$ensg)>15)==TRUE)] <- location[match(cnv1$ensg[-which((nchar(cnv1$ensg)>15)==TRUE)],location$V7),6]
+cnv1$ensg <- substr(cnv1$ensg,1,15)
+cnv1 <- na.omit(cnv1)
+cnv1$enst <- location[match(cnv1$ensg,location$ensg),4]
+cnv1$chr <- location[match(cnv1$ensg,location$ensg),1]
+cnv1$start <- location[match(cnv1$ensg,location$ensg),2]
+cnv1$end <- location[match(cnv1$ensg,location$ensg),3]
+
+write.table(cnv1, "/pub6/wenjing/cnv/subtype1-cnvall.txt", sep="\t",quote = F )
+
+cnv1 <- read.table("E:/pathway/CNV/subtype1-cnvall.txt", sep = "\t", header = T,row.names = 1,stringsAsFactors = F)
+
+cnv1$loss <- 0-cnv1$loss
+cnv1$del <- 0-cnv1$del
+cnv1$chr[which(cnv1$chr=="chrX")] <- "chr23"
+cnv1$chr <- as.numeric(gsub("chr","",cnv1$chr))
+
+#cnv1$position <- as.numeric(paste(cnv1$chr,cnv1$start,sep = "."))
+
+cnv2 <- cnv1[order(cnv1$chr,cnv1$start),]#按chr从小到大，如果chr一样，则按start从小到大
+cnv2$position <- 1:dim(cnv2)[1]
+
+
+a <- as.data.frame(table(cnv2$chr))$Freq
+b <- c()
+for (i in 1:23) {
+  b[i] <- sum(a[1:i])
+}
+
+ggplot() + 
+  geom_area(data = cnv2,aes(x = position,y = amp+gain),color = "#a92226",fill = "#a92226")+
+  geom_area(data = cnv2,aes(x = position,y = gain),color = "#ce9c9d",fill = "#ce9c9d")+
+  geom_area(data = cnv2,aes(x = position,y = loss+del),color = "#3c3e8f",fill = "#3c3e8f")+
+  geom_area(data = cnv2,aes(x = position,y = loss),color = "#a7acca",fill = "#a7acca")+
+  geom_vline(xintercept = b,linetype ="dotted")+
+  ylim(-1,1)
+ggsave("E:/图/4a-cnv-subtype1.pdf",width = 10,height = 4)
+
+for (i in 1:4) {
+  cnv1 <- read.table(paste0("E:/pathway/CNV/subtype",i,"-cnvall.txt"), sep = "\t", header = T,row.names = 1,stringsAsFactors = F)
+
+  cnv1$loss <- 0-cnv1$loss
+  cnv1$del <- 0-cnv1$del
+  cnv1$chr[which(cnv1$chr=="chrX")] <- "chr23"
+  cnv1$chr <- as.numeric(gsub("chr","",cnv1$chr))
+
+  #cnv1$position <- as.numeric(paste(cnv1$chr,cnv1$start,sep = "."))
+
+  cnv2 <- cnv1[order(cnv1$chr,cnv1$start),]#按chr从小到大，如果chr一样，则按start从小到大
+  cnv2$position <- 1:dim(cnv2)[1]
+
+
+  ggplot() + 
+    geom_area(data = cnv2,aes(x = position,y = amp+gain),color = "#a92226",fill = "#a92226")+
+    geom_area(data = cnv2,aes(x = position,y = gain),color = "#ce9c9d",fill = "#ce9c9d")+
+    geom_area(data = cnv2,aes(x = position,y = loss+del),color = "#3c3e8f",fill = "#3c3e8f")+
+    geom_area(data = cnv2,aes(x = position,y = loss),color = "#a7acca",fill = "#a7acca")+
+    geom_vline(xintercept = b,linetype ="dotted")+
+    theme(axis.text.x = element_blank(),    ###主题
+          axis.text.y = element_text(size = 10),
+          axis.line = element_line(),
+          axis.title = element_blank(),
+          strip.background = element_blank(),
+          strip.text = element_blank(),
+          panel.background = element_blank(),
+          panel.border = element_blank(),
+          panel.grid = element_blank())+
+    ylim(-1,1)
+  ggsave(paste0("E:/图/4a-cnv-subtype",i,".pdf"),width = 10,height = 3)
+
+}
+
+###########Fisher 精确检验##########
+
+p1_2 <- data.frame()
+
+for(i in 1:dim(cnv1)[1]){
+p1_2[i,1] <- fisher.test(rbind(cnv3b[i,1:2],cnv4b[i,1:2]))$p.value
+p1_2[i,2] <- fisher.test(rbind(cnv3b[i,3:4],cnv4b[i,3:4]))$p.value
+}
+rownames(p1_2) <- rownames(cnv1b)
+p1_2 <- cbind(p1_2,cnv1b[,5:10])
+
+write.table(p1_2, "/pub6/wenjing/cnv/3-4-FDR.txt", sep="\t",quote = F )
+
+
+
+p1_2 <- read.table("E:/pathway/CNV/1-3-FDR.txt", sep = "\t", header = T,row.names = 1,stringsAsFactors = F)
+p1_2$fdrgain <- p.adjust(p1_2$V1, method = "fdr", n = length(p1_2$V1))
+p1_2$fdrloss <- p.adjust(p1_2$V2, method = "fdr", n = length(p1_2$V2))
+
+p1_2$fdrgain2 <- -log(p1_2$fdrgain,10)
+p1_2$fdrloss2 <- log(p1_2$fdrloss,10)
+
+p1_2$chr[which(p1_2$chr=="chrX")] <- "chr23"
+p1_2$chr <- as.numeric(gsub("chr","",p1_2$chr))
+p1_2 <- p1_2[order(p1_2$chr,p1_2$start),]#按chr从小到大，如果chr一样，则按start从小到大
+p1_2$position <- 1:dim(p1_2)[1]
+
+
+ggplot() + 
+  geom_area(data = p1_2 ,aes(x = position,y = fdrgain2),color = "#ce9d4e",fill = "#ce9d4e")+
+  geom_area(data = p1_2 ,aes(x = position,y = fdrloss2),color = "#add179",fill = "#add179")+
+  geom_vline(xintercept = b,linetype ="dotted")+
+  theme(axis.text.x = element_blank(),    ###主题
+        axis.text.y = element_text(size = 10),
+        axis.line = element_line(),
+        axis.title = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank())+
+  ylim(-5,5)
+ggsave("E:/图/1-3-cnv.pdf",width = 10,height = 3)
 
 
 
