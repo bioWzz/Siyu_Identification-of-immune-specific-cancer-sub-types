@@ -6256,6 +6256,9 @@ Mayo.fit4<-survivalROC.C(Stime=clinic$days_to_death,
 #BiocInstaller::biocLite("clusterProfiler")
 #BiocInstaller::biocLite("org.Hs.eg.db")
 #install.packages('GOplot')
+
+## 
+## 丹妮的GO 注释
 library(clusterProfiler)
 library(GOplot)
 setwd("f:/datahe/immuno/3-co-consensus/avg/plot/molecular/mRNA")
